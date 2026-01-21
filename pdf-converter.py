@@ -1,19 +1,22 @@
 import os
 import subprocess
 
-# Carpeta donde están los notebooks
 carpeta = "./"
-
-# Cambiar el directorio actual a la carpeta
 os.chdir(carpeta)
 
-# Recorrer todos los archivos de la carpeta
 for archivo in os.listdir(carpeta):
     if archivo.endswith(".ipynb"):
-        print(f"Convirtiendo {archivo} a PDF...")
+        print(f"Convirtiendo {archivo} a PDF vía HTML...")
         try:
+            # Exportar a HTML
+            html_file = archivo.replace(".ipynb", ".html")
             subprocess.run([
-                "jupyter", "nbconvert", "--to", "pdf", archivo
+                "jupyter", "nbconvert", "--to", "html", archivo
+            ], check=True)
+            # Convertir HTML a PDF usando wkhtmltopdf
+            pdf_file = archivo.replace(".ipynb", ".pdf")
+            subprocess.run([
+                "wkhtmltopdf", html_file, pdf_file
             ], check=True)
         except subprocess.CalledProcessError:
             print(f"Error al convertir {archivo}")
