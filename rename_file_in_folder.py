@@ -1,43 +1,47 @@
 import os
-import os
 import re
 from pathlib import Path
+from difflib import SequenceMatcher
 
-# Rutas a tus carpetas
 pdfs_dir = Path("pdfs")
 temario_dir = Path("temario")
 
-# Obtener lista de archivos .ipynb en temario
+# Función para limpiar el nombre de comparaciones
+def clean_name(name):
+    name = name.lower()
+    name = re.sub(r"[\s_]+", "", name)      # quitar espacios y guiones bajos
+    return name
+
+# Obtener lista de archivos .ipynb
 temario_files = [f for f in temario_dir.iterdir() if f.suffix == ".ipynb"]
 
-# Ordenar por el número al inicio del nombre
+# Ordenar por número al inicio
 def get_number(f):
-    match = re.match(r"(\d+)_", f.name)
+    match = re.match(r"(\d+)", f.name)
     return int(match.group(1)) if match else float('inf')
 
 temario_files.sort(key=get_number)
 
-# Crear un mapping de nombre base -> número
-name_to_number = {}
-for f in temario_files:
-    number = get_number(f)
-    # quitar número y guion bajo
-    base_name = re.sub(r"^\d+_", "", f.stem)
-    name_to_number[base_name] = number
-
 # Renombrar archivos en pdfs
-for f in pdfs_dir.iterdir():
-    if f.suffix in [".pdf", ".html"]:
-        # quitar extensión
-        base_name = f.stem
-        # buscar el número correspondiente (coincidencia parcial)
-        matched_number = None
-        for key in name_to_number:
-            if key in base_name:
-                matched_number = name_to_number[key]
-                break
-        if matched_number is not None:
-            new_name = f"{matched_number}_{base_name}{f.suffix}"
-            new_path = f.parent / new_name
-            print(f"Renombrando: {f.name} -> {new_name}")
-            f.rename(new_path)
+for pdf_file in pdfs_dir.iterdir():
+    if pdf_file.suffix not in [".pdf", ".html"]:
+        continue
+
+    pdf_clean = clean_name(pdf_file.stem)
+    best_match = None
+    best_ratio = 0
+
+    for temario_file in temario_files:
+        temario_clean = clean_name(re.sub(r"^\d+_", "", temario_file.stem))
+        ratio = SequenceMatcher(None, pdf_clean, temario_clean).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_match = temario_file
+
+    # Solo renombrar si la coincidencia es bastante buena (>0.6)
+    if best_match and best_ratio > 0.6:
+        number = get_number(best_match)
+        new_name = f"{number}_{pdf_file.name}"
+        new_path = pdf_file.parent / new_name
+        print(f"Renombrando: {pdf_file.name} -> {new_name}")
+        pdf_file.rename(new_path)
