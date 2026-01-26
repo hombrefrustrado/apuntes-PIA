@@ -2,3 +2,5 @@
 build/
 venv/
 entorno/
+workspace/
+data/
